@@ -1,0 +1,4 @@
+com\example\scg_project\dto\RedisTestResult.class
+com\example\scg_project\controller\RedisPingController.class
+com\example\scg_project\ScgGatewayApplication.class
+com\example\scg_project\config\JedisConfig.class
