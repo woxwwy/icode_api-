@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // 创建axios实例
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081',
   timeout: 10000
 })
 
