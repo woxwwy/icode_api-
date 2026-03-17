@@ -5,25 +5,26 @@ spring:
   jmx:
     enabled: false
   application:
-    name: scg-gateway
+    name: scg-gateway #给应用起名字
 
+  #redis相关配置，springboot提供了自动配置类，自动根据这些配置创建一个jedispool连接池对象，供程序使用
   data:
-    redis:
-      host: localhost
-      port: 6379
-      password:
-      database: 0
-      timeout: 5000
+    redis: #redis相关配置
+      host: localhost  #redis服务器地址，默认是本机
+      port: 6379 #redis服务器端口，默认是6379
+      password: #redis服务器密码
+      database: 0  #使用第0个数据库。redis数据库索引，默认是0，redis可以有多个数据库，通过索引区分
+      timeout: 2000 #连接超时时间
       jedis:
-        pool:
+        pool: #连接池配置
           max-active: 8
-          max-idle: 8
+          max-idle: 8 #最多8个空闲连接
           min-idle: 0
-          max-wait: -1
+          max-wait: 1000 #借连接等待时间，超过这个时间还没有获取到连接，就抛出异常
 
 logging:
   level:
-    root: INFO
-    com.example.scg_project: DEBUG
+    root: INFO #全局的生产环境打印info及以上级别日志
+    com.example.scg_project: DEBUG #日志级别设置为debug，开发环境打印所有级别日志，方便调试
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
