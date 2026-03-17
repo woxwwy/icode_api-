@@ -3,13 +3,16 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
  	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"> 
  	<modelVersion>4.0.0</modelVersion> 
- 	<parent> 
+ 	<!-- #父POM，springboot提供的父POM，里面定义了很多默认配置和依赖版本，可以直接使用 -->
+	<parent> 
  		<groupId>org.springframework.boot</groupId> 
  		<artifactId>spring-boot-starter-parent</artifactId> 
  		<version>3.5.9</version> 
  		<relativePath/> 
  	</parent> 
- 	<groupId>com.example</groupId> 
+ 	
+	<!-- 项目信息 -->
+	<groupId>com.example</groupId> 
  	<artifactId>scg-project</artifactId> 
  	<version>0.0.1-SNAPSHOT</version> 
  	<name>SCG-Gateway</name> 
@@ -27,38 +30,60 @@
  		<tag/> 
  		<url/> 
  	</scm> 
- 	<properties> 
+ 	
+	<!-- 版本属性配置 -->
+	<properties> 
  		<java.version>17</java.version> 
  		<spring-cloud.version>2025.0.1</spring-cloud.version> 
  	</properties> 
- 	<dependencies> 
- 		<dependency> 
- 			<groupId>org.springframework.boot</groupId> 
- 			<artifactId>spring-boot-starter-actuator</artifactId> 
- 		</dependency> 
- 		<dependency> 
+ 	
+	<dependencies>
+		
+		<!-- 监控项目健康状态的依赖，可以查看应用的各种指标和状态访问：http://localhost:8080/actuator/health
+返回：{
+  "status": "UP"UP=正常，DOWN=出问题了 -->
+ 		<dependency>
+ 			<groupId>org.springframework.boot</groupId>
+ 			<artifactId>spring-boot-starter-actuator</artifactId>
+ 		</dependency>
+		
+		<!-- 用到reactor-core库，响应式编程核心库，响应式编程和eventloop是亲戚关系-->
+ 		<dependency>
+			<groupId>io.projectreactor</groupId>
+			<artifactId>reactor-core</artifactId>
+			<version>3.5.13</version>
+		</dependency> 
+ 		
+		<!-- 网关核心包，做路由转发和过滤器功能 -->
+		<dependency> 
  			<groupId>org.springframework.cloud</groupId> 
  			<artifactId>spring-cloud-starter-gateway-server-webmvc</artifactId> 
  		</dependency> 
- 		<dependency> 
+ 		
+		<!-- 简化代码工具，比如用 @Data 自动生成 getter/setter 方法 -->
+		<dependency> 
  			<groupId>org.projectlombok</groupId> 
  			<artifactId>lombok</artifactId> 
  			<optional>true</optional> 
  		</dependency> 
  		
- 		<dependency>
+ 		<!-- jedis是一个Java客户端库，用于连接和操作Redis数据库，提供了丰富的API来执行各种Redis命令，支持连接池、事务、发布/订阅等功能，适用于Java应用程序与Redis进行交互。 -->
+		<dependency>
 			<groupId>redis.clients</groupId>
 			<artifactId>jedis</artifactId>
 			<version>4.4.3</version>
 		</dependency>
  		
+		<!-- springboot测试依赖，可以提供测试框架和工具，只在测试时有效	 -->
  		<dependency> 
  			<groupId>org.springframework.boot</groupId> 
  			<artifactId>spring-boot-starter-test</artifactId> 
  			<scope>test</scope> 
- 		</dependency> 
- 	</dependencies> 
- 	<dependencyManagement> 
+ 		</dependency>
+	</dependencies> 
+ 	
+	<!-- 管理依赖版本 -->
+	<dependencyManagement> 
  		<dependencies> 
  			<dependency> 
  				<groupId>org.springframework.cloud</groupId> 
@@ -70,6 +95,7 @@
  		</dependencies> 
  	</dependencyManagement> 
  	 
+	 <!-- 构建配置 -->
  	<build> 
  		<plugins> 
  			<plugin> 
@@ -84,7 +110,8 @@
  					</annotationProcessorPaths> 
  				</configuration> 
  			</plugin> 
- 			<plugin> 
+ 			
+			<plugin> 
  				<groupId>org.springframework.boot</groupId> 
  				<artifactId>spring-boot-maven-plugin</artifactId> 
  				<configuration> 
