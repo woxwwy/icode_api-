@@ -7,5 +7,5 @@ import Home from './views/Home.vue'
 </script>
 
 <style scoped>
-/* App.vue 严格不写业务逻辑 */
+/* App.vue 严格不写业务逻辑 */    /*实现样式分离*/
 </style>
