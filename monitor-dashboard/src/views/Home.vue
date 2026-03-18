@@ -2,118 +2,90 @@
   <div class="home-container">
     <!-- 查询区域 -->
     <div class="query-section">
-      <el-input 
-        v-model="queryParams" 
-        placeholder="请输入查询条件" 
-        style="width: 300px; margin-right: 10px;" 
-      />
-      <QueryButton @click="fetchRoutes" />
+      <el-button type="success" @click="fetchPing" :loading="loading">
+        <template v-if="loading">
+          <el-icon class="is-loading"><Loading /></el-icon>
+          检查中...
+        </template>
+        <template v-else>检查Redis连接</template>
+      </el-button>
     </div>
 
-    <!-- 路由表格 -->
-    <div class="table-section">
-      <RouteTable :routes="routes" />
+    <!-- 结果显示 -->
+    <div class="result-section" v-if="pingResult">
+      <el-card>
+        <template #header>
+          <div class="card-header">
+            <span>Redis连接状态</span>
+          </div>
+        </template>
+        <div class="ping-result">
+          <el-tag :type="pingResult === 'PONG' ? 'success' : 'warning'">
+            {{ pingResult }}
+          </el-tag>
+        </div>
+      </el-card>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import QueryButton from '../components/QueryButton.vue'
-import RouteTable from '../components/RouteTable.vue'
-import { getRoutes } from '../api/routes'
-import { ElInput } from 'element-plus'
-import 'element-plus/es/components/input/style/css'
+import { getPing } from '../api/routes'
+import { ElButton, ElCard, ElTag, ElIcon } from 'element-plus'
+import { Loading } from '@element-plus/icons-vue'
+import 'element-plus/es/components/button/style/css'
+import 'element-plus/es/components/card/style/css'
+import 'element-plus/es/components/tag/style/css'
+import 'element-plus/es/components/icon/style/css'
 
 // 响应式数据
-const routes = ref([])
-const queryParams = ref('')
+const pingResult = ref('')
+const loading = ref(false)
 
-// 获取路由数据
-const fetchRoutes = (startLoading, endLoading) => {
-  startLoading()
+// 获取Redis ping结果
+const fetchPing = () => {
+  loading.value = true
   
-  getRoutes()
+  getPing()
     .then(response => {
-      // 确保首条数据id为order-route
-      if (Array.isArray(response) && response.length > 0) {
-        response[0].id = 'order-route'
-        // 根据查询参数过滤数据
-        if (queryParams.value) {
-          const params = queryParams.value.toLowerCase()
-          routes.value = response.filter(route => 
-            route.id.toLowerCase().includes(params) ||
-            route.path.toLowerCase().includes(params) ||
-            route.name.toLowerCase().includes(params)
-          )
-        } else {
-          routes.value = response
-        }
-      } else {
-        // 模拟数据
-        const mockData = [
-          { id: 'order-route', path: '/home', component: 'HomeComponent', name: '首页' },
-          { id: '2', path: '/about', component: 'AboutComponent', name: '关于我们' },
-          { id: '3', path: '/user/list', component: 'UserListComponent', name: '用户列表' },
-          { id: '4', path: '/user/detail', component: 'UserDetailComponent', name: '用户详情' }
-        ]
-        
-        // 根据查询参数过滤模拟数据
-        if (queryParams.value) {
-          const params = queryParams.value.toLowerCase()
-          routes.value = mockData.filter(route => 
-            route.id.toLowerCase().includes(params) ||
-            route.path.toLowerCase().includes(params) ||
-            route.name.toLowerCase().includes(params)
-          )
-        } else {
-          routes.value = mockData
-        }
-      }
+      pingResult.value = response
     })
     .catch(err => {
-      alert('加载失败')
-      console.warn('获取路由失败:', err)
-      // API失败时也显示模拟数据
-      const mockData = [
-        { id: 'order-route', path: '/home', component: 'HomeComponent', name: '首页' },
-        { id: '2', path: '/about', component: 'AboutComponent', name: '关于我们' },
-        { id: '3', path: '/user/list', component: 'UserListComponent', name: '用户列表' },
-        { id: '4', path: '/user/detail', component: 'UserDetailComponent', name: '用户详情' }
-      ]
-      
-      // 根据查询参数过滤模拟数据
-      if (queryParams.value) {
-        const params = queryParams.value.toLowerCase()
-        routes.value = mockData.filter(route => 
-          route.id.toLowerCase().includes(params) ||
-          route.path.toLowerCase().includes(params) ||
-          route.name.toLowerCase().includes(params)
-        )
-      } else {
-        routes.value = mockData
-      }
+      console.warn('获取ping结果失败:', err)
+      // 降级处理，与后端保持一致
+      pingResult.value = 'true (降级)'
     })
     .finally(() => {
-      endLoading()
+      loading.value = false
     })
 }
 </script>
 
 <style scoped>
 .home-container {
-  max-width: 1200px;
+  max-width: 600px;
   margin: 0 auto;
   padding: 20px;
 }
 
 .query-section {
   margin-bottom: 20px;
+}
+
+.result-section {
+  margin-top: 20px;
+}
+
+.card-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
 }
 
-.table-section {
-  min-height: 400px;
+.ping-result {
+  font-size: 18px;
+  font-weight: bold;
+  padding: 20px 0;
 }
 </style>
