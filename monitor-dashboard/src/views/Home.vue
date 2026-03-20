@@ -21,11 +21,24 @@
         </template>
         <div class="ping-result">
           <el-tag :type="pingResult === 'PONG' ? 'success' : 'warning'">
-            {{ pingResult }}        /*显示给用户看，良好的用户体验*/
+            {{ pingResult }}
           </el-tag>
         </div>
       </el-card>
     </div>
+
+    <!-- ========== 新增：路由表格区域 ========== -->
+    <div class="route-section" style="margin-top: 30px;">
+      <el-card>
+        <template #header>
+          <div class="card-header">
+            <span>路由列表（mock 数据）</span>
+          </div>
+        </template>
+        <RouteTable :routes="mockRoutes" />
+      </el-card>
+    </div>
+    <!-- ========== 新增结束 ========== -->
   </div>
 </template>
 
@@ -38,6 +51,9 @@ import 'element-plus/es/components/button/style/css'
 import 'element-plus/es/components/card/style/css'
 import 'element-plus/es/components/tag/style/css'
 import 'element-plus/es/components/icon/style/css'
+// 新增：导入 mock 数据和表格组件
+import { mockRoutes } from '@/mock/mockroutes.js'
+import RouteTable from '@/components/RouteTable.vue'          //原本我的代码只显示了ping的结果，没有展示table
 
 // 响应式数据
 const pingResult = ref('')
