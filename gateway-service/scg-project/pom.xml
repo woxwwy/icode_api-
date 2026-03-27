@@ -1,3 +1,4 @@
+
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" 
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -57,7 +58,8 @@
 		<!-- 网关核心包，做路由转发和过滤器功能 -->
 		<dependency> 
  			<groupId>org.springframework.cloud</groupId> 
- 			<artifactId>spring-cloud-starter-gateway-server-webmvc</artifactId> 
+ 			<artifactId>spring-cloud-starter-gateway</artifactId> 
+			<!-- 提供了构建API网关的核心功能，包括路由转发、过滤器、负载均衡等功能，适用于构建微服务架构中的API网关。 -->
  		</dependency> 
  		
 		<!-- 简化代码工具，比如用 @Data 自动生成 getter/setter 方法 -->
@@ -73,7 +75,20 @@
 			<artifactId>jedis</artifactId>
 			<version>4.4.3</version>
 		</dependency>
- 		
+		
+		<!-- redis reactive 依赖 -->
+		<!-- Spring Data Redis Reactive - 响应式Redis支持，用于限流算法的Lua脚本执行 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+		</dependency>
+		
+		<!-- 连接池支持（Lettuce） -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-pool2</artifactId>
+		</dependency>
+		
 		<!-- springboot测试依赖，可以提供测试框架和工具，只在测试时有效	 -->
  		<dependency> 
  			<groupId>org.springframework.boot</groupId> 
