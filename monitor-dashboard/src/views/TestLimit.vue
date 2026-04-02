@@ -1,13 +1,35 @@
 <template>
   <div class="test-limit-container">
-    <!-- 头部区域 -->
+    <!-- 头部区域：标题 + 模式标签 + 实时统计面板 -->
     <div class="page-header">
       <div class="title-section">
         <h1>限流效果验证</h1>
         <p class="subtitle">API 网关 · 限流策略可视化测试</p>
       </div>
-      <div class="mode-badge">
-        <el-tag type="info" effect="plain">{{ currentModeText }}</el-tag>
+      <div class="header-right">
+        <!-- 实时统计面板 (2026-04-02 新增) -->
+        <div class="stats-panel">
+          <div class="stat-item">
+            <span class="stat-label">当前状态：</span>
+            <span class="stat-value online">在线</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">最近1秒请求：</span>
+            <span class="stat-value">{{ lastSecondCount }} 次</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">成功率：</span>
+            <span class="stat-value" :class="{ high: lastSecondSuccessRate >= 80, low: lastSecondSuccessRate < 50 }">
+              {{ lastSecondSuccessRate }}%
+            </span>
+            <span v-if="lastSecondTotal > 0" class="stat-detail">
+              ({{ lastSecondSuccess }}成功/{{ lastSecondFail }}限流)
+            </span>
+          </div>
+        </div>
+        <div class="mode-badge">
+          <el-tag type="info" effect="plain">{{ currentModeText }}</el-tag>
+        </div>
       </div>
     </div>
 
@@ -24,6 +46,15 @@
             @click="toggleAutoAttack"
           >
             {{ autoAttackActive ? '停止自动攻击' : '开始自动攻击' }}
+          </el-button>
+          <!-- 2026-04-02 新增：连续发送20次请求按钮 -->
+          <el-button
+            type="danger"
+            :icon="Operation"
+            @click="sendBatch20"
+            :disabled="batchRunning"
+          >
+            连续发送20次请求
           </el-button>
           <el-button
             type="success"
@@ -62,6 +93,24 @@
       </div>
     </el-card>
 
+    <!-- 2026-04-02 新增：20次请求结果列表区域 -->
+    <div v-if="batchResults.length > 0" class="batch-results">
+      <div class="batch-header">
+        <span>批量请求结果（20次）</span>
+        <el-button text size="small" @click="clearBatchResults">清空</el-button>
+      </div>
+      <div class="result-list">
+        <div
+          v-for="(result, idx) in batchResults"
+          :key="idx"
+          class="result-item"
+          :class="{ success: result.success, fail: !result.success }"
+        >
+          {{ idx + 1 }}. {{ result.success ? '✅' : '❌' }}
+        </div>
+      </div>
+    </div>
+
     <!-- 场景选择面板（内嵌在图表上方） -->
     <div v-if="showSceneSelector" class="scene-selector">
       <div class="scene-buttons">
@@ -90,7 +139,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'  // 2026-04-02 新增 nextTick
 import * as echarts from 'echarts'
 import {
   ElButton,
@@ -108,7 +157,8 @@ import {
   CircleCheck,
   Warning,
   Odometer,
-  VideoCamera
+  VideoCamera,
+  Operation   // 2026-04-02 新增图标
 } from '@element-plus/icons-vue'
 import { sendMockRequest } from '@/mock/mockLimit.js'
 import client from '@/api/client'
@@ -123,9 +173,22 @@ const autoAttackActive = ref(false)
 let attackInterval = null
 
 // ---------- 演示场景相关 ----------
-const showSceneSelector = ref(false)  // 控制场景选择面板显示
+const showSceneSelector = ref(false)
 const scenarioRunning = ref(false)
-const scenarioHint = ref('')          // 场景运行提示
+const scenarioHint = ref('')
+
+// ---------- 2026-04-02 新增：批量请求（20次）相关 ----------
+const batchRunning = ref(false)
+const batchResults = ref([])  // 存储 { success: boolean }
+
+// ---------- 2026-04-02 新增：实时统计相关 ----------
+const recentRequests = ref([])   // 存储 { timestamp, success }
+let statsInterval = null
+const lastSecondCount = ref(0)
+const lastSecondSuccess = ref(0)
+const lastSecondFail = ref(0)
+const lastSecondSuccessRate = ref(0)
+const lastSecondTotal = ref(0)
 
 // 当前模式文本
 const currentModeText = computed(() => {
@@ -138,46 +201,178 @@ const currentModeText = computed(() => {
   }
 })
 
-// 单次请求
-const sendSingleRequest = async () => {
-  // 2026-03-27 修复：手动发送请求时清除场景提示
-  scenarioHint.value = ''
+// ---------- 通用请求函数（供单次、批量、自动攻击复用）----------
+// 返回值: { success: boolean, is429?: boolean, error?: any }
+const performRequest = async () => {
   const mode = localStorage.getItem('rate_limit_mode')
   if (mode === 'real') {
     try {
       await client.post('/test-rate-limit', {})
-      successCount.value++
-      recordRequest(true)
+      return { success: true }
     } catch (error) {
       if (error.response && error.response.status === 429) {
-        failCount.value++
-        recordRequest(false)
+        return { success: false, is429: true }
       } else {
-        ElMessage.error('请求失败：' + (error.message || '未知错误'))
+        return { success: false, error }
       }
     }
   } else {
     try {
       await sendMockRequest()
-      successCount.value++
-      recordRequest(true)
+      return { success: true }
     } catch (error) {
       if (error.status === 429) {
-        failCount.value++
-        recordRequest(false)
+        return { success: false, is429: true }
       } else {
-        ElMessage.error('请求失败：' + error.message)
+        return { success: false, error }
       }
     }
   }
 }
 
-// 自动攻击
+// 更新计数器和统计，useAlert 参数控制是否使用 alert（自动攻击时传 false）
+const handleRequestResult = (result, useAlert = true) => {
+  if (result.success) {
+    successCount.value++
+    recordRequest(true)
+    addToRecentRequests(true)
+  } else if (result.is429) {
+    failCount.value++
+    recordRequest(false)
+    addToRecentRequests(false)
+    if (useAlert) {
+      alert('被限流了！')
+    } else {
+      ElMessage.error('被限流了！')
+    }
+  } else {
+    if (useAlert) {
+      alert('请求失败：' + (result.error?.message || '未知错误'))
+    } else {
+      ElMessage.error('请求失败：' + (result.error?.message || '未知错误'))
+    }
+  }
+}
+
+// 单次请求（使用 alert）
+const sendSingleRequest = async () => {
+  // 清除场景提示
+  scenarioHint.value = ''
+  const result = await performRequest()
+  handleRequestResult(result, true)
+}
+
+// 2026-04-02 新增：静默请求（用于自动攻击，不使用 alert）
+const sendSingleRequestSilent = async () => {
+  const result = await performRequest()
+  handleRequestResult(result, false)
+}
+
+// ---------- 2026-04-02 新增：批量发送20次请求（使用 alert）----------
+const sendBatch20 = async () => {
+  if (batchRunning.value) {
+    ElMessage.warning('批量请求正在进行中，请稍后')
+    return
+  }
+  if (autoAttackActive.value) {
+    ElMessage.warning('请先停止自动攻击')
+    return
+  }
+  batchRunning.value = true
+  batchResults.value = []  // 清空上次结果
+  let success = 0
+  let fail = 0
+
+  for (let i = 0; i < 20; i++) {
+    const result = await performRequest()
+    if (result.success) {
+      success++
+      batchResults.value.push({ success: true })
+      // 更新全局计数和统计（复用函数）
+      successCount.value++
+      recordRequest(true)
+      addToRecentRequests(true)
+    } else if (result.is429) {
+      fail++
+      batchResults.value.push({ success: false })
+      failCount.value++
+      recordRequest(false)
+      addToRecentRequests(false)
+      alert('被限流了！')
+    } else {
+      // 其他错误，也记录为失败
+      fail++
+      batchResults.value.push({ success: false })
+      alert('请求失败：' + (result.error?.message || '未知错误'))
+    }
+    // 间隔 100ms
+    await new Promise(r => setTimeout(r, 100))
+  }
+
+  batchRunning.value = false
+  // 最终统计弹窗
+  alert(`测试完成：成功${success}次，被限流${fail}次`)
+}
+
+// 清空批量结果列表
+const clearBatchResults = () => {
+  batchResults.value = []
+}
+
+// ---------- 实时统计相关函数 ----------
+const addToRecentRequests = (success) => {
+  const now = Date.now()
+  recentRequests.value.push({ timestamp: now, success })
+  // 保留最近20条足够用于每秒统计，但为了精确，保留所有最近1秒的请求即可，不过我们会在每秒定时清理
+  // 为了性能，限制数组长度不超过200
+  if (recentRequests.value.length > 200) {
+    recentRequests.value = recentRequests.value.slice(-100)
+  }
+}
+
+// 更新统计面板（每秒执行）
+const updateStats = () => {
+  const now = Date.now()
+  const oneSecondAgo = now - 1000
+  // 过滤出最近1秒内的请求
+  const recent = recentRequests.value.filter(r => r.timestamp >= oneSecondAgo)
+  const total = recent.length
+  const success = recent.filter(r => r.success).length
+  const fail = total - success
+  lastSecondCount.value = total
+  lastSecondSuccess.value = success
+  lastSecondFail.value = fail
+  lastSecondTotal.value = total
+  if (total === 0) {
+    lastSecondSuccessRate.value = 0
+  } else {
+    lastSecondSuccessRate.value = Math.round((success / total) * 100)
+  }
+  // 清理超过1秒的旧记录（可选，避免数组无限增长）
+  recentRequests.value = recentRequests.value.filter(r => r.timestamp >= oneSecondAgo)
+}
+
+// 启动统计定时器
+const startStatsTimer = () => {
+  if (statsInterval) clearInterval(statsInterval)
+  statsInterval = setInterval(() => {
+    updateStats()
+  }, 1000)
+}
+
+const stopStatsTimer = () => {
+  if (statsInterval) {
+    clearInterval(statsInterval)
+    statsInterval = null
+  }
+}
+
+// 自动攻击（使用静默请求，避免弹窗阻塞）
 const startAutoAttack = () => {
   if (attackInterval) clearInterval(attackInterval)
   const intervalMs = 1000 / frequency.value
   attackInterval = setInterval(() => {
-    sendSingleRequest()
+    sendSingleRequestSilent()
   }, intervalMs)
 }
 
@@ -189,7 +384,6 @@ const stopAutoAttack = () => {
 }
 
 const toggleAutoAttack = () => {
-  // 2026-03-27 修复：点击自动攻击按钮时清除场景提示
   scenarioHint.value = ''
   autoAttackActive.value = !autoAttackActive.value
   if (autoAttackActive.value) {
@@ -208,24 +402,30 @@ watch(frequency, () => {
 // ---------- 演示场景函数 ----------
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-// 场景 A：正常用户
+// 2026-04-02 新增辅助函数：强制更新场景提示
+const setScenarioHint = async (hint) => {
+  scenarioHint.value = ''
+  await nextTick()
+  scenarioHint.value = hint
+}
+
 const runScenarioA = async () => {
   scenarioRunning.value = true
-  scenarioHint.value = '场景演示：正常用户（1 req/s，全部成功）'
+  await setScenarioHint('场景演示：正常用户（1 req/s，全部成功）')
   ElMessage.info('场景 A 开始：正常用户，每秒1次请求，全部成功')
   for (let i = 0; i < 5; i++) {
     successCount.value++
     recordRequest(true)
+    addToRecentRequests(true)
     await sleep(1000)
   }
   ElMessage.success('场景 A 执行完毕')
   scenarioRunning.value = false
 }
 
-// 场景 B：突发流量
 const runScenarioB = async () => {
   scenarioRunning.value = true
-  scenarioHint.value = '场景演示：突发流量（50次并发，红绿混合）'
+  await setScenarioHint('场景演示：突发流量（50次并发，红绿混合）')
   ElMessage.info('场景 B 开始：突发流量，50次并发请求，部分成功部分限流')
   const promises = []
   for (let i = 0; i < 50; i++) {
@@ -234,11 +434,14 @@ const runScenarioB = async () => {
         .then(() => {
           successCount.value++
           recordRequest(true)
+          addToRecentRequests(true)
         })
         .catch(err => {
           if (err.status === 429) {
             failCount.value++
             recordRequest(false)
+            addToRecentRequests(false)
+            alert('被限流了！')
           } else {
             console.warn('意外错误', err)
           }
@@ -250,10 +453,9 @@ const runScenarioB = async () => {
   scenarioRunning.value = false
 }
 
-// 场景 C：降级模式
 const runScenarioC = async () => {
   scenarioRunning.value = true
-  scenarioHint.value = '场景演示：降级模式（模拟 Redis 离线，全量放行）'
+  await setScenarioHint('场景演示：降级模式（模拟 Redis 离线，全量放行）')
   ElMessage.warning({
     message: '降级模式：限流器离线，全量放行',
     duration: 3000,
@@ -262,13 +464,13 @@ const runScenarioC = async () => {
   for (let i = 0; i < 10; i++) {
     successCount.value++
     recordRequest(true)
+    addToRecentRequests(true)
     await sleep(200)
   }
   ElMessage.success('场景 C 执行完毕（模拟降级，所有请求成功）')
   scenarioRunning.value = false
 }
 
-// 显示场景选择面板
 const showScenePanel = () => {
   if (autoAttackActive.value) {
     ElMessage.warning('请先停止自动攻击')
@@ -281,9 +483,11 @@ const showScenePanel = () => {
   showSceneSelector.value = true
 }
 
-// 统一场景运行入口
 const runScenario = async (scene) => {
-  showSceneSelector.value = false  // 隐藏选择面板
+  showSceneSelector.value = false
+  // 2026-04-02 修复：先清空提示，再运行场景
+  scenarioHint.value = ''
+  await nextTick()
   if (scene === 'A') await runScenarioA()
   else if (scene === 'B') await runScenarioB()
   else if (scene === 'C') await runScenarioC()
@@ -357,15 +561,19 @@ onMounted(() => {
     ],
     series: []
   })
+  // 启动统计定时器
+  startStatsTimer()
 })
 
 onUnmounted(() => {
   if (attackInterval) clearInterval(attackInterval)
   if (chart) chart.dispose()
+  stopStatsTimer()
 })
 </script>
 
 <style scoped>
+/* 原有样式保持不变，新增以下样式 */
 .test-limit-container {
   max-width: 1400px;
   margin: 0 auto;
@@ -379,6 +587,12 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.header-right {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
   flex-wrap: wrap;
 }
 .title-section h1 {
@@ -399,6 +613,82 @@ onUnmounted(() => {
   margin-top: 0.5rem;
 }
 
+/* 实时统计面板样式 */
+.stats-panel {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+.stat-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+.stat-label {
+  color: #6b7280;
+}
+.stat-value {
+  font-weight: 600;
+  color: #1f2937;
+}
+.stat-value.online {
+  color: #10b981;
+}
+.stat-value.high {
+  color: #10b981;
+}
+.stat-value.low {
+  color: #f56c6c;
+}
+.stat-detail {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin-left: 0.25rem;
+}
+
+/* 批量结果列表样式 */
+.batch-results {
+  margin-bottom: 1rem;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 0.75rem;
+  border: 1px solid #eef2f6;
+}
+.batch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+.result-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.result-item {
+  width: 40px;
+  text-align: center;
+  font-size: 1.1rem;
+  padding: 0.2rem;
+  border-radius: 6px;
+}
+.result-item.success {
+  background-color: #e8f5e9;
+}
+.result-item.fail {
+  background-color: #ffebee;
+}
+
+/* 其他原有样式保持不变 */
 .control-card {
   margin-bottom: 1.5rem;
   border-radius: 16px;
@@ -483,7 +773,6 @@ onUnmounted(() => {
   color: #3b82f6;
 }
 
-/* 场景选择面板 */
 .scene-selector {
   margin-bottom: 1rem;
   padding: 1rem;
@@ -532,6 +821,10 @@ onUnmounted(() => {
   }
   .chart-container {
     height: 280px;
+  }
+  .stats-panel {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.6rem;
   }
 }
 </style>
