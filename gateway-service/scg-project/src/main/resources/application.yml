@@ -21,10 +21,49 @@ spring:
           max-idle: 8 #最多8个空闲连接
           min-idle: 0
           max-wait: 1000 #借连接等待时间，超过这个时间还没有获取到连接，就抛出异常
+      # 新增：Lettuce 连接池配置（用于响应式Redis操作）
+      lettuce:
+        pool:
+          max-active: 8      # 最大连接数
+          max-idle: 8        # 最大空闲连接
+          min-idle: 0        # 最小空闲连接
+          max-wait: 1000     # 连接池满时等待时间（毫秒）
+
+  cloud:
+    gateway:
+        routes:
+                # 优先处理 /ping 健康检查请求
+        - id: ping-route
+          uri: forward:/ping
+          predicates:
+            - Path=/ping
+          
+        - id: user-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/user/**
+        
+        # 新增：用于压测的三个接口路由
+        - id: user-service-test
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/light, /api/heavy, /api/error
+
+# 新增：Actuator 配置（暴露健康检查端点）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
 
 logging:
   level:
     root: INFO #全局的生产环境打印info及以上级别日志
     com.example.scg_project: DEBUG #日志级别设置为debug，开发环境打印所有级别日志，方便调试
+    org.springframework.data.redis: DEBUG  # 新增：Redis 日志
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
