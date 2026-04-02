@@ -12,59 +12,34 @@
       </div>
     </div>
 
-    <!-- 操作栏（新增） -->
-    <div class="action-bar">
-      <div class="search-box">
-        <el-input
-          v-model="searchKeyword"
-          placeholder="按路径、名称或ID搜索路由..."
-          :prefix-icon="Search"
-          clearable
-        />
-      </div>
-      <div class="action-buttons">
-        <el-button @click="fetchPing" :loading="loading">
-          {{ loading ? '检查中...' : '检查 Redis 连接' }}
-        </el-button>
-        <el-button type="primary" @click="refreshRoutes" :loading="routesLoading">
-          {{ routesLoading ? '刷新中...' : '刷新路由' }}
-        </el-button>
-      </div>
+    <!-- 结果显示 -->
+    <div class="result-section" v-if="pingResult">
+      <el-card>
+        <template #header>
+          <div class="card-header">
+            <span>Redis连接状态</span>
+          </div>
+        </template>
+        <div class="ping-result">
+          <el-tag :type="pingResult === 'PONG' ? 'success' : 'warning'">
+            {{ pingResult }}
+          </el-tag>
+        </div>
+      </el-card>
     </div>
 
-    <!-- Redis 连接状态卡片（修改：样式优化，增加时间戳） -->
-    <el-card v-if="pingResult" class="result-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <span>Redis 连接状态</span>
-          <span class="check-time" v-if="lastCheckTime">{{ lastCheckTime }}</span>
-        </div>
-      </template>
-      <div class="ping-result">
-        <el-tag :type="pingResult === 'PONG' ? 'success' : 'danger'">
-          {{ pingResult === 'PONG' ? '连接成功' : pingResult }}
-        </el-tag>
-      </div>
-    </el-card>
-
-    <!-- 路由卡片（修改：增加加载状态、错误提示、搜索过滤） -->
-    <el-card class="route-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <span>路由列表</span>
-          <span class="route-count" v-if="filteredRoutes.length">
-            共 {{ filteredRoutes.length }} 条
-          </span>
-        </div>
-      </template>
-      <RouteTable
-        :routes="filteredRoutes"
-        :loading="routesLoading"
-        :error="routesError"
-        @retry="refreshRoutes"
-        @row-click="handleRowClick"       
-      />
-    </el-card>
+    <!-- ========== 新增：路由表格区域 ========== -->
+    <div class="route-section" style="margin-top: 30px;">
+      <el-card>
+        <template #header>
+          <div class="card-header">
+            <span>路由列表（mock 数据）</span>
+          </div>
+        </template>
+        <RouteTable :routes="mockRoutes" />
+      </el-card>
+    </div>
+    <!-- ========== 新增结束 ========== -->
   </div>
 </template>
 
@@ -78,8 +53,10 @@ import { Search, Loading } from '@element-plus/icons-vue'
 import 'element-plus/es/components/button/style/css'
 import 'element-plus/es/components/card/style/css'
 import 'element-plus/es/components/tag/style/css'
-import 'element-plus/es/components/input/style/css'
-import 'element-plus/es/components/message/style/css'
+import 'element-plus/es/components/icon/style/css'
+// 新增：导入 mock 数据和表格组件
+import { mockRoutes } from '@/mock/mockroutes.js'
+import RouteTable from '@/components/RouteTable.vue'          //原本我的代码只显示了ping的结果，没有展示table
 
 // 响应式数据
 const pingResult = ref('')
