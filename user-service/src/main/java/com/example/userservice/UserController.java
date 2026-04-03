@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 @RestController
-@CrossOrigin(origins = "*")  // 允许所有前端跨域访问
+//@CrossOrigin(origins = "*")  // 允许所有前端跨域访问
 public class UserController {
     
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
@@ -39,7 +39,18 @@ public class UserController {
         logger.info("耗时业务接口 /api/heavy 处理完成");
         return "Heavy response from user-service (delayed 100ms): " + System.currentTimeMillis();
     }
+
+
+    // 限流测试接口（供前端调用）
+    @PostMapping("/api/test-rate-limit")
+    public String testRateLimit() {
+        return "OK";
+    }
     
+
+
+
+
     // 新接口：错误测试接口（50%概率报错）
     @GetMapping("/api/error")
     public String error() {
