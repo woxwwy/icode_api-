@@ -1,8 +1,8 @@
 <template>
   <el-button 
     type="success" 
-    @click="handleClick"
-    :loading="loading"
+    @click="handleClick"        
+    :loading="loading"          
   >
     <template v-if="loading">
       <el-icon class="is-loading"><Loading /></el-icon>
@@ -21,7 +21,7 @@ import { Loading } from '@element-plus/icons-vue'
 import 'element-plus/es/components/button/style/css'
 import 'element-plus/es/components/icon/style/css'
 
-const emit = defineEmits(['click'])
+const emit = defineEmits(['click'])          /*发送emit事件给父组件，实现功能分区 */
 
 const loading = ref(false)
 
