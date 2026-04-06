@@ -38,4 +38,4 @@ export default function () {
     '无超时错误': (r) => r.status !== 0, // k6中status 0表示网络/超时错误
   });
   
-  sleep(1); }
+  sleep(1);  }
