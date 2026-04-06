@@ -1,6 +1,12 @@
 server:
   port: 8081
 
+# 限流算法切换开关
+limiter:
+  type: redis      # 使用 Redis 令牌桶
+
+
+
 spring:
   jmx:
     enabled: false
@@ -76,7 +82,10 @@ spring:
         uri: http://localhost:8082
         predicates:
           - Path=/api/routes
-
+      - id: test-route
+        uri: http://localhost:8082
+        predicates:
+          - Path=/test
 
 # 新增：Actuator 配置（暴露健康检查端点）
 management:
