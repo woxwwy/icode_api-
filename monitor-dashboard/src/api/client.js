@@ -9,6 +9,15 @@ const client = axios.create({
 // 请求拦截器
 client.interceptors.request.use(
   config => {
+    // 2026-03-27 新增：将限流配置添加到请求头
+    const mode = localStorage.getItem('rate_limit_mode')
+    const threshold = localStorage.getItem('rate_limit_threshold')
+    if (mode) {
+      config.headers['X-RateLimit-Mode'] = mode === 'real' ? 'real' : 'mock'
+    }
+    if (threshold) {
+      config.headers['X-RateLimit-Threshold'] = threshold
+    }
     return config
   },
   error => {
