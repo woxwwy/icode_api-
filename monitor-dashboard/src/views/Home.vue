@@ -78,6 +78,19 @@
       />
     </el-card>
 
+    <!-- 网关日志查看区域 -->
+    <el-card class="log-card" shadow="hover">
+      <template #header>
+        <div class="log-header">
+          <span>网关日志（最近50行）</span>
+          <el-button size="small" @click="loadLogs" :loading="logsLoading">
+            刷新日志
+          </el-button>
+        </div>
+      </template>
+      <pre class="log-content">{{ logsContent }}</pre>
+    </el-card>
+
     <!-- 自定义红色错误弹窗 -->
     <transition name="fade">
       <div v-if="errorPopup.visible" class="error-popup" :class="errorPopup.type">
@@ -142,6 +155,10 @@ const routesLoading = ref(false)
 const routesError = ref('')
 const searchKeyword = ref('')
 
+// 新增：日志相关数据
+const logsContent = ref('点击刷新按钮加载日志...')
+const logsLoading = ref(false)
+
 // 过滤路由
 const filteredRoutes = computed(() => {
   if (!searchKeyword.value.trim()) return routes.value
@@ -164,6 +181,25 @@ const refreshRoutes = async () => {
     ElMessage.error(routesError.value)
   } finally {
     routesLoading.value = false
+  }
+}
+
+// 新增：加载网关日志
+const loadLogs = async () => {
+  logsLoading.value = true
+  try {
+    const res = await fetch('http://localhost:8081/logs/recent')
+    const data = await res.json()
+    if (Array.isArray(data)) {
+      logsContent.value = data.join('\n')
+    } else {
+      logsContent.value = '日志格式错误'
+    }
+  } catch (error) {
+    console.error('加载日志失败:', error)
+    logsContent.value = '加载日志失败：' + error.message
+  } finally {
+    logsLoading.value = false
   }
 }
 
@@ -385,6 +421,29 @@ onMounted(() => {
   background: #f3f4f6;
   padding: 0.25rem 0.5rem;
   border-radius: 9999px;
+}
+
+/* 网关日志卡片样式 */
+.log-card {
+  margin-top: 20px;
+}
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.log-content {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 12px;
+  height: 300px;
+  overflow: auto;
+  font-family: 'Consolas', monospace;
+  font-size: 12px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
 }
 
 /* 红色错误弹窗 */
