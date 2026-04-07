@@ -56,6 +56,24 @@
         >
           降级测试
         </el-button>
+        <!-- 转发渠道一：外卖服务模拟 -->
+        <el-button
+          type="info"
+          :loading="deliveryLoading"
+          @click="callDeliveryService"
+          plain
+        >
+          🍔 转发渠道一（外卖服务模拟）
+        </el-button>
+        <!-- 转发渠道二：快递服务模拟 -->
+        <el-button
+          type="info"
+          :loading="expressLoading"
+          @click="callExpressService"
+          plain
+        >
+          📦 转发渠道二（快递服务模拟）
+        </el-button>
       </div>
     </div>
 
@@ -158,6 +176,10 @@ const searchKeyword = ref('')
 // 新增：日志相关数据
 const logsContent = ref('点击刷新按钮加载日志...')
 const logsLoading = ref(false)
+
+// 新增：转发渠道相关
+const deliveryLoading = ref(false)
+const expressLoading = ref(false)
 
 // 过滤路由
 const filteredRoutes = computed(() => {
@@ -274,6 +296,36 @@ const testFallback = async () => {
       '无法连接到网关降级测试接口',
       error.message
     )
+  }
+}
+
+// 转发渠道一：外卖服务模拟
+const callDeliveryService = async () => {
+  deliveryLoading.value = true
+  try {
+    const res = await axios.get('http://localhost:8081/api/demo/delivery')
+    console.log('外卖服务响应:', res.data)
+    showSuccessToast(`转发成功 - ${res.data.channel}，${res.data.deliveryTime}`)
+  } catch (error) {
+    console.error('调用失败:', error)
+    showErrorPopup('转发失败', '外卖服务调用失败', error.message)
+  } finally {
+    deliveryLoading.value = false
+  }
+}
+
+// 转发渠道二：快递服务模拟
+const callExpressService = async () => {
+  expressLoading.value = true
+  try {
+    const res = await axios.get('http://localhost:8081/api/demo/express')
+    console.log('快递服务响应:', res.data)
+    showSuccessToast(`转发成功 - ${res.data.channel}，${res.data.estimatedArrival}`)
+  } catch (error) {
+    console.error('调用失败:', error)
+    showErrorPopup('转发失败', '快递服务调用失败', error.message)
+  } finally {
+    expressLoading.value = false
   }
 }
 
