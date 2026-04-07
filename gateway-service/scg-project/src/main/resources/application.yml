@@ -99,14 +99,22 @@ management:
       show-details: always
 
 logging:
+  file:
+    name: logs/gateway.log          # 日志文件路径
+    max-size: 10MB                  # 新增：单个文件最大大小
+    max-history: 30                 # 新增：保留天数
   level:
     root: INFO #全局的生产环境打印info及以上级别日志
     com.example.scg_project: DEBUG #日志级别设置为debug，开发环境打印所有级别日志，方便调试
     org.springframework.data.redis: DEBUG  # 新增：Redis 日志
+    com.gateway.filter: DEBUG      # 新增：限流过滤器日志
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"  # 新增：文件日志格式
 
 # 限流配置
 ratelimit:
-  limit: 5
-  windowMs: 1000
+  limit: 5              # 令牌桶容量（必需）
+  windowMs: 1000        # 时间窗口（必需）
+  # refill-rate: 3      # 这个可以删除，因为代码中用 limit 和 windowMs 计算速率
+  # bucket-capacity: 3  # 这个可以删除
